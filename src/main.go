@@ -16,5 +16,9 @@ func main() {
   system[1].AddPoly(q).AddPoly(one)
   println(system[0].String())
   println(system[1].String())
-  println(linsolver.Solve(system).String())
+  res,_ := linsolver.Solve(system)
+///  if err != nil {
+///  } else {
+    println(res.String())
+///  }
 }
