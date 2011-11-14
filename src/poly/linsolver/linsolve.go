@@ -24,23 +24,58 @@ func (s Solution) String() string {
 }
 
 func Solve(system []poly.Polynomial) (Solution, os.Error) {
-  _,symTbl,err := formMatrix(system)
+  m,symTbl,err := formMatrix(system)
   if err != nil {
     return nil,err
   }
+println(m.String())
   soln := make(Solution,len(symTbl))
-  todo := make([]int,len(symTbl)+1,len(symTbl)+1)
-  for i,_ := range todo {
-    todo[i] = i
+  todo := make(map[string]int)
+  for p,i := range symTbl {
+    todo[p] = i
   }
 
-  for _,p := range system {
-    for _,t := range p {
-      for pron,_ := range t.Pron {
-        soln[pron] = 0
+  for ri,r := range m {
+    if v,c,ok,z := r.solved(todo);ok {
+      if !z {
+        soln[v] = c
+        todo[v] = -1,false
+      }
+      continue
+    }
+    vIdx := -1
+    for i,c  := range r[:len(r)-1] {
+      if c == 0 {
+        continue
+      } else {
+        vIdx = i
+        break
+      }
+    }
+    if vIdx < 0 {
+      // Useless row
+      continue
+    }
+    r.normalise(1/r[vIdx])
+    for ri2,r2 := range m {
+      if ri2 == ri {
+        continue
+      }
+      if v,c,ok,z := r2.solved(todo);ok {
+        if !z {
+          soln[v] = c
+          todo[v] = -1,false
+        }
+        continue
+      }
+      r2.subtract(r,r2[vIdx])
+      if v,c,ok,_ := r2.solved(todo);ok {
+        soln[v] = c
+        todo[v] = -1,false
       }
     }
   }
+
   return soln,os.NewError("Not implemented")
 }
 
@@ -102,14 +137,29 @@ func (r row) normalise(scale float64) row {
   return r
 }
 
-func (m matrix) GetSolution(symTbl map[string]int) (Solution,os.Error) {
-  soln := make(Solution,len(symTbl))
-
-  for _,r := range m {
-    //TODO
-    r.subtract(r,0)
+func (r row) solved(todoTbl map[string]int) (string,float64,bool,bool) {
+  pStr := ""
+  for v,i := range todoTbl {
+    if pStr != "" && r[i] != 0 {
+      return "",0,false,false
+    } else if r[i] != 0 {
+      pStr = v
+    }
   }
-  return soln,nil
+  if pStr == "" {
+    return pStr,r[len(r)-1],true,true
+  }
+  return pStr,r[len(r)-1],true,false
+}
+
+func (m matrix) String() (res string) {
+  for _,r := range m {
+    for _,c := range r {
+      res += fmt.Sprintf("%f\t",c)
+    }
+    res += fmt.Sprintln()
+  }
+  return
 }
 
 type row []float64
