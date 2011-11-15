@@ -23,8 +23,8 @@ func GetMinCoeff() float64 {
   return min_coeff
 }
 
-func SetMinCoeff(deg float64 ) {
-  min_coeff = deg
+func SetMinCoeff(coeff float64 ) {
+  min_coeff = coeff
 }
 
 func Done() {
@@ -92,6 +92,27 @@ func AddPoly(p, q Polynomial) Polynomial {
 
   if debug {
     log.Printf("**DEBUG - (%s) + (%s) = %s",p.String(),q.String(), r.String())
+  }
+  return r
+}
+
+func MultConst(p Polynomial, c float64) Polynomial {
+  if debug {
+    setLogDefault()
+    log.Printf("**DEBUG - Entering MultConst: (%s)*(%f)",p.String(),c)
+  }
+
+  r := p.Copy()
+  if c == 0 {
+    return NewConstant(0,true).Copy()
+  }
+
+  for k,t := range r {
+    r[k] = Term{t.Pron, c*t.Coeff}
+  }
+
+  if debug {
+    log.Printf("**DEBUG - (%s) * (%f) = %s",p.String(), c, r.String())
   }
   return r
 }
