@@ -5,7 +5,7 @@ BIN=./poly
 
 run :
 	gd -L $(LIB_DIR) -o $(BIN) $(SRC_DIR)
-	$(BIN)
+	$(BIN) 10 15
 
 clean :
 	rm -r $(BIN) $(LIB_DIR)/*

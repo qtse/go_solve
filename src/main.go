@@ -1,12 +1,17 @@
 package main
 
 import (
+    "os"
     "poly"
     "poly/linsolver"
     )
 
 func main() {
   defer cleanUp()
+
+  if len(os.Args) != 3 {
+    os.Exit(1)
+  }
   p := poly.NewPronumeral("p")
   q := poly.NewPronumeral("q")
   r := poly.NewPronumeral("r")
