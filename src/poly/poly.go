@@ -34,8 +34,8 @@ func Done() {
 /*****************************
  * func acting on Polynomial
  ****************************/
-func NewConstant(c float64) Polynomial {
-  if r,found := polyCache[c]; found {
+func NewConstant(c float64, cache bool) Polynomial {
+  if r,found := polyCache[c]; cache && found {
     if debug {
       setLogDefault()
       log.Printf("**DEBUG - Retrieve constant (%f) from cache: %s", c, r.String())
@@ -52,7 +52,9 @@ func NewConstant(c float64) Polynomial {
   if c != 0 {
     r[""] = Term{make(map[string]int), c}
   }
-  polyCache[c]=r
+  if cache {
+    polyCache[c]=r
+  }
 
   return r
 }
