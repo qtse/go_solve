@@ -158,6 +158,14 @@ func (p Polynomial) AddPoly(q Polynomial) Polynomial {
   return p
 }
 
+func (p Polynomial) Eval(val map[string]float64) float64 {
+  res := 0.0
+  for _,t := range p {
+    res += t.Eval(val)
+  }
+  return res
+}
+
 func (p Polynomial) String() string {
   first := true
   res := ""
@@ -316,6 +324,14 @@ func (t *Term) Degree() (deg int) {
     deg += exp
   }
   return
+}
+
+func (t *Term) Eval(val map[string]float64) float64 {
+  res := (*t).Coeff
+  for p,exp := range (*t).Pron {
+    res *= math.Pow(val[p],float64(exp))
+  }
+  return res
 }
 
 /*****************************
