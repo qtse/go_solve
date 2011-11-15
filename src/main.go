@@ -31,4 +31,5 @@ func main() {
 
 func cleanUp() {
   linsolver.Done()
+  poly.Done()
 }

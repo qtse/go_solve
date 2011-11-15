@@ -27,6 +27,10 @@ func SetMinCoeff(deg float64 ) {
   min_coeff = deg
 }
 
+func Done() {
+  close(multChan)
+}
+
 /*****************************
  * func acting on Polynomial
  ****************************/
@@ -96,20 +100,13 @@ func MultPoly(p,q Polynomial) Polynomial {
     log.Printf("**DEBUG - Entering MultPoly: (%s)*(%s)",p.String(),q.String())
   }
 
-  ch := make(chan *multArg, ncpu*2)
   chs := make([]chan Polynomial, 0, len(p))
-
-  var i uint
-  for i = 0; i < ncpu; i++ {
-    go multRoutine(ch)
-  }
 
   for _,tm := range p {
     rch := make(chan Polynomial)
     chs = append(chs,rch)
-    ch <- &multArg{tm, q, rch}
+    multChan <- &multArg{tm, q, rch}
   }
-  close(ch)
 
   r := make(Polynomial)
   for _,rch := range chs {
@@ -328,7 +325,15 @@ func setLogDefault() {
   log.SetFlags(log.Flags() & ^(log.Ldate|log.Ltime))
 }
 
-const ncpu uint = 2
+func init() {
+  var i uint
+  for i = 0; i < ncpu; i++ {
+    go multRoutine(multChan)
+  }
+}
+
+var multChan chan *multArg = make(chan *multArg, 2*ncpu)
+const ncpu uint = 3
 var max_degree int = -1
 var min_coeff float64 = -1
 var polyCache map[interface{}]Polynomial = make(map[interface{}]Polynomial)
