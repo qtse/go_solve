@@ -6,7 +6,13 @@ import (
     "poly"
     )
 
+const ncpu int = 3
+
 type Solution map[string]float64
+
+func Done() {
+  close(subChan)
+}
 
 func (s Solution) String() string {
   res := ""
@@ -28,55 +34,45 @@ func Solve(system []poly.Polynomial) (Solution, os.Error) {
   if err != nil {
     return nil,err
   }
-println(m.String())
-  soln := make(Solution,len(symTbl))
   todo := make(map[string]int)
   for p,i := range symTbl {
     todo[p] = i
   }
 
   for ri,r := range m {
-    if v,c,ok,z := r.solved(todo);ok {
-      if !z {
-        soln[v] = c
-        todo[v] = -1,false
-      }
-      continue
-    }
     vIdx := -1
-    for i,c  := range r[:len(r)-1] {
-      if c == 0 {
-        continue
-      } else {
-        vIdx = i
-        break
+    if v,_,ok,z := r.solved(todo);z {
+      continue
+    } else if ok {
+      vIdx = todo[v]
+    } else {
+      for i,c  := range r[:len(r)-1] {
+        if c != 0 {
+          vIdx = i
+          break
+        }
       }
     }
-    if vIdx < 0 {
-      // Useless row
-      continue
-    }
+
     r.normalise(1/r[vIdx])
+    req := 0
+    retChan := make(chan *subRes,len(m))
     for ri2,r2 := range m {
       if ri2 == ri {
         continue
       }
-      if v,c,ok,z := r2.solved(todo);ok {
-        if !z {
-          soln[v] = c
-          todo[v] = -1,false
-        }
+      if _,_,ok,_ := r2.solved(todo);ok {
         continue
       }
-      r2.subtract(r,r2[vIdx])
-      if v,c,ok,_ := r2.solved(todo);ok {
-        soln[v] = c
-        todo[v] = -1,false
-      }
+      subChan <- &subArg{r2,r,r2[vIdx],retChan}
+      req++
+    }
+    for i := 0; i < req; i++ {
+      <-retChan
     }
   }
 
-  return soln,os.NewError("Not implemented")
+  return m.getSolution(symTbl)
 }
 
 func formMatrix(system []poly.Polynomial) (m matrix, symTbl map[string]int, err os.Error) {
@@ -152,14 +148,65 @@ func (r row) solved(todoTbl map[string]int) (string,float64,bool,bool) {
   return pStr,r[len(r)-1],true,false
 }
 
+func (r row) String() (res string) {
+  for _,c := range r {
+    res += fmt.Sprintf("%f ",c)
+  }
+  res += fmt.Sprintln()
+  return
+}
+
 func (m matrix) String() (res string) {
   for _,r := range m {
-    for _,c := range r {
-      res += fmt.Sprintf("%f\t",c)
-    }
-    res += fmt.Sprintln()
+    res += r.String()
   }
   return
+}
+
+func (m matrix) getSolution(symTbl map[string]int) (res Solution, err os.Error) {
+  res = make(Solution)
+  for _,r := range m {
+    if p,v,ok,z := r.solved(symTbl); !z {
+      if ok {
+        if vv,found := res[p]; found && v!=vv {
+          err = os.NewError(fmt.Sprintf("System inconsistent: %f != %f",v,vv))
+          res = nil
+          return
+        }
+        res[p] = -v
+      } else {
+        err = os.NewError("Not completely solved")
+      }
+    }
+  }
+
+  return
+}
+
+var subChan chan *subArg = make(chan *subArg,3)
+func goSub(arg chan *subArg) {
+  for a := range subChan {
+    arg := *a
+    r,e := arg.From.subtract(arg.Ref, arg.Coeff)
+    arg.Return <- &subRes{r,e}
+  }
+}
+
+func init() {
+  for i := 0; i < ncpu; i++ {
+    go goSub(subChan)
+  }
+}
+
+type subArg struct {
+  From row
+  Ref row
+  Coeff float64
+  Return chan *subRes
+}
+type subRes struct {
+  res row
+  err os.Error
 }
 
 type row []float64
